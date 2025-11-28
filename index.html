@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Christmas Tree | The Gilded Emerald</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Playfair+Display:ital,wght@0,400;1,400&display=swap');
+
+        :root {
+            --emerald-dark: #001a10;
+            --emerald: #023020;
+            --gold: #D4AF37;
+            --gold-light: #F7E7CE;
+            --glass: rgba(20, 20, 20, 0.4);
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            overflow: hidden;
+            font-family: 'Playfair Display', serif;
+            color: var(--gold-light);
+            overscroll-behavior: none;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* UI Overlay */
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 40px;
+            box-sizing: border-box;
+            background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.8) 100%);
+            transition: background 1s ease;
+        }
+
+        .ui-hidden {
+            opacity: 0 !important;
+            pointer-events: none;
+            transform: translateY(-20px);
+        }
+        
+        .immersive-mode {
+            background: transparent !important;
+        }
+
+        header {
+            text-align: center;
+            margin-top: 20px;
+            pointer-events: auto;
+            transition: all 1.2s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 2.5rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin: 0;
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.6);
+            opacity: 0;
+            animation: fadeDown 1.5s ease-out forwards 0.5s;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            letter-spacing: 0.2em;
+            color: rgba(255,255,255,0.6);
+            margin-top: 10px;
+            text-transform: uppercase;
+            opacity: 0;
+            animation: fadeDown 1.5s ease-out forwards 0.8s;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            align-items: flex-end;
+            padding-bottom: 40px;
+            pointer-events: auto;
+            opacity: 0;
+            animation: fadeUp 1.5s ease-out forwards 1.2s;
+            flex-wrap: wrap; 
+        }
+
+        .btn-group {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            transition: all 1s ease;
+        }
+
+        button, .file-btn {
+            background: var(--glass);
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            padding: 15px 40px;
+            font-family: 'Cinzel', serif;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            white-space: nowrap;
+            touch-action: manipulation; 
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.4), transparent);
+            transition: 0.5s;
+        }
+
+        button:hover::before {
+            left: 100%;
+        }
+
+        button:hover {
+            background: rgba(212, 175, 55, 0.2);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.3);
+            transform: translateY(-2px);
+        }
+
+        button.active {
+            background: var(--gold);
+            color: var(--emerald-dark);
+            box-shadow: 0 0 40px rgba(212, 175, 55, 0.6);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* --- Modal Styles --- */
+        .custom-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+
+        .custom-modal.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-box {
+            background: rgba(2, 48, 32, 0.95);
+            border: 1px solid var(--gold);
+            padding: 40px 60px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 0 0 60px rgba(212, 175, 55, 0.2);
+            transform: translateY(20px);
+            transition: transform 0.5s ease;
+            text-align: center;
+            max-width: 90%;
+            box-sizing: border-box;
+        }
+
+        .custom-modal.visible .modal-box {
+            transform: translateY(0);
+        }
+
+        .modal-title {
+            font-family: 'Cinzel', serif;
+            color: var(--gold);
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .modal-input {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.5);
+            color: var(--gold-light);
+            font-family: 'Playfair Display', serif;
+            font-size: 1.2rem;
+            padding: 10px;
+            width: 300px;
+            max-width: 100%;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .modal-input:focus {
+            border-bottom-color: var(--gold);
+        }
+
+        .modal-actions {
+            margin-top: 20px;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--gold);
+            font-family: 'Cinzel', serif;
+            letter-spacing: 0.2em;
+            font-size: 0.8rem;
+            animation: pulse 2s infinite;
+            text-align: center;
+            width: 100%;
+        }
+
+        @keyframes fadeDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+        /* --- MOBILE RESPONSIVE STYLES --- */
+        @media (max-width: 768px) {
+            #ui {
+                padding: 20px;
+                padding-bottom: 30px; 
+            }
+
+            h1 {
+                font-size: 1.8rem;
+                letter-spacing: 0.15em;
+            }
+
+            .subtitle {
+                font-size: 0.75rem;
+            }
+
+            .controls {
+                flex-direction: column;
+                width: 100%;
+                gap: 12px;
+                align-items: stretch;
+                padding-bottom: 20px;
+            }
+
+            .btn-group {
+                width: 100%;
+            }
+
+            button {
+                width: 100%;
+                padding: 12px 0;
+                font-size: 0.9rem;
+            }
+
+            .modal-box {
+                padding: 30px 20px;
+                width: 90%;
+            }
+            
+            .modal-input {
+                width: 100%;
+                font-size: 1rem;
+            }
+        }
+    </style>
+    <!-- React & Three Imports -->
+    <script type="importmap">
+        {
+            "imports": {
+                "react": "https://esm.sh/react@18.2.0",
+                "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+                "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
+                "three": "https://esm.sh/three@0.160.0",
+                "@react-three/fiber": "https://esm.sh/@react-three/fiber@8.15.12?external=react,react-dom,three",
+                "@react-three/drei": "https://esm.sh/@react-three/drei@9.96.1?external=react,react-dom,three,@react-three/fiber",
+                "@react-three/postprocessing": "https://esm.sh/@react-three/postprocessing@2.16.0?external=react,react-dom,three,@react-three/fiber",
+                "uuid": "https://esm.sh/uuid@9.0.1"
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <!-- Customize Text Modal -->
+    <div id="text-modal" class="custom-modal">
+        <div class="modal-box">
+            <div class="modal-title">Personalize Experience</div>
+            <input type="text" id="input-title" class="modal-input" placeholder="Enter Main Title">
+            <input type="text" id="input-subtitle" class="modal-input" placeholder="Enter Subtitle">
+            <div class="modal-actions">
+                <button id="confirm-text-btn">Update Display</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="ui">
+        <header id="main-header">
+            <!-- TITLE UPDATED -->
+            <h1 id="app-title">Christmas Tree</h1>
+            <div id="app-subtitle" class="subtitle">The Gilded Emerald Edition</div>
+        </header>
+        <div class="controls">
+            <!-- ORDER UPDATED: Music -> Edit -> Action -->
+            <div class="btn-group" id="group-music">
+                <button onclick="document.getElementById('music-upload').click()">Load Music</button>
+                <input type="file" id="music-upload" accept="audio/*">
+            </div>
+            <div class="btn-group" id="group-edit">
+                <button id="edit-text-btn">Customize Text</button>
+            </div>
+            <div class="btn-group" id="group-action">
+                <button id="toggle-state">Assemble Tree</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="canvas-container">
+        <div class="loading">Initializing Luxury Asset Pipeline...</div>
+    </div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useRef, useMemo, useEffect, Suspense } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import * as THREE from 'three';
+        import { Canvas, useFrame, useThree, extend } from '@react-three/fiber';
+        import { OrbitControls, Environment, Float, Sparkles, PerspectiveCamera, Stars } from '@react-three/drei';
+        import { EffectComposer, Bloom, Vignette, Noise, ToneMapping } from '@react-three/postprocessing';
+
+        // --- Audio Infrastructure ---
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256; 
+        const dataArray = new Uint8Array(analyser.frequencyBinCount); // 128 bins
+        
+        let activeSourceNode = null; 
+        
+        const defaultAudioEl = new Audio('https://cdn.pixabay.com/audio/2025/05/26/audio_95504c3693.mp3');
+        defaultAudioEl.crossOrigin = "anonymous";
+        defaultAudioEl.loop = true;
+        
+        let defaultMediaElementSource = null;
+
+        const useAudioData = () => {
+            const frequency = useRef(0);
+            useFrame(() => {
+                analyser.getByteFrequencyData(dataArray);
+                const avg = dataArray.reduce((a, b) => a + b) / dataArray.length;
+                frequency.current = avg; 
+            });
+            return frequency;
+        };
+
+        // --- Custom Shaders ---
+
+        const foliageVertexShader = `
+            uniform float uTime;
+            uniform float uProgress; // 0 = Scattered, 1 = Tree
+            uniform float uAudio;
+            attribute vec3 aScatterPos;
+            attribute vec3 aTreePos;
+            attribute float aRandom;
+            varying float vVisible;
+            varying vec2 vUv;
+            varying float vRandom;
+            varying float vHeight;
+            void main() {
+                vUv = uv;
+                vRandom = aRandom;
+                vec3 finalPos = mix(aScatterPos, aTreePos, uProgress);
+                float breathe = sin(uTime * 2.0 + aRandom * 10.0) * 0.05;
+                float beat = uAudio * 0.02 * uProgress; 
+                finalPos += normal * (breathe + beat);
+                if(uProgress < 0.5) {
+                    finalPos.y += sin(uTime + aScatterPos.x) * 0.2 * (1.0 - uProgress);
+                }
+                vHeight = finalPos.y; 
+                vec4 mvPosition = modelViewMatrix * vec4(finalPos, 1.0);
+                gl_PointSize = (4.0 * (1.0 + uAudio * 0.1)) * (20.0 / -mvPosition.z);
+                gl_Position = projectionMatrix * mvPosition;
+            }
+        `;
+
+        const foliageFragmentShader = `
+            uniform float uTime;
+            uniform float uAudio; 
+            varying float vRandom;
+            varying float vHeight;
+            varying vec2 vUv;
+            void main() {
+                vec2 center = gl_PointCoord - 0.5;
+                float dist = length(center);
+                if (dist > 0.5) discard;
+                vec3 emerald = vec3(0.0, 0.25, 0.18);   
+                vec3 ruby = vec3(0.3, 0.02, 0.05);      
+                vec3 gold = vec3(1.0, 0.9, 0.4);        
+                float timeCycle = sin(uTime * 0.4) * 0.5 + 0.5; 
+                vec3 baseTone = mix(emerald, ruby, timeCycle * 0.2); 
+                float heightFactor = smoothstep(-5.0, 8.0, vHeight);
+                vec3 gradientBase = mix(baseTone * 0.5, baseTone * 1.8, heightFactor);
+                float beatStrength = smoothstep(0.4, 0.9, uAudio); 
+                vec3 rhythmicColor = mix(gradientBase, gold, beatStrength * 0.4);
+                float sparkle = sin(uTime * 3.0 + vRandom * 100.0);
+                float isTip = step(0.96, sin(vRandom * 30.0 + uTime + uAudio * 5.0)); 
+                vec3 finalColor = mix(rhythmicColor, gold * 2.5, isTip * (sparkle * 0.5 + 0.5 + beatStrength));
+                float alpha = 1.0 - smoothstep(0.4, 0.5, dist);
+                gl_FragColor = vec4(finalColor, alpha * 0.9);
+            }
+        `;
+
+        // --- Utils: Gift Texture Generator ---
+        function createGiftTexture(type) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            
+            if (type === 0) { // Red + Gold Ribbon
+                ctx.fillStyle = '#8B0000'; ctx.fillRect(0,0,256,256);
+                ctx.fillStyle = '#FFD700'; 
+                ctx.fillRect(118, 0, 20, 256); // Vert
+                ctx.fillRect(0, 118, 256, 20); // Horiz
+            } else if (type === 1) { // Green + Gold Stripes
+                ctx.fillStyle = '#023020'; ctx.fillRect(0,0,256,256);
+                ctx.fillStyle = '#D4AF37';
+                ctx.lineWidth = 15;
+                for(let i=-256; i<512; i+=40) {
+                    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i+256, 256); ctx.stroke();
+                }
+            } else if (type === 2) { // Navy + Silver Dots
+                ctx.fillStyle = '#000080'; ctx.fillRect(0,0,256,256);
+                ctx.fillStyle = '#C0C0C0';
+                for(let x=0; x<256; x+=40) {
+                    for(let y=0; y<256; y+=40) {
+                        ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI*2); ctx.fill();
+                    }
+                }
+            } else { // Gold + Red Ribbon
+                ctx.fillStyle = '#D4AF37'; ctx.fillRect(0,0,256,256);
+                ctx.fillStyle = '#8B0000';
+                ctx.fillRect(118, 0, 20, 256);
+                ctx.fillRect(0, 118, 256, 20);
+            }
+            
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        // --- Components ---
+
+        const AudioSpectrumRing = ({ isTree }) => {
+            const meshRef = useRef();
+            const count = 128; 
+            const dummy = useMemo(() => new THREE.Object3D(), []);
+            const [color] = useState(() => new THREE.Color());
+
+            useEffect(() => {
+                if (meshRef.current) {
+                    for (let i = 0; i < count; i++) {
+                        color.setHSL(i / count, 1.0, 0.5); 
+                        color.multiplyScalar(1.5); 
+                        meshRef.current.setColorAt(i, color);
+                    }
+                    meshRef.current.instanceColor.needsUpdate = true;
+                }
+            }, []);
+
+            const [scatterTargets] = useState(() => {
+                const scatter = new Float32Array(count * 3);
+                for(let i=0; i<count; i++) {
+                    const r = 25 * Math.cbrt(Math.random()); 
+                    const theta = Math.random() * 2 * Math.PI;
+                    const phi = Math.acos(2 * Math.random() - 1);
+                    scatter[i*3] = r * Math.sin(phi) * Math.cos(theta);
+                    scatter[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+                    scatter[i*3+2] = r * Math.cos(phi);
+                }
+                return scatter;
+            });
+
+            useFrame((state, delta) => {
+                if(!meshRef.current) return;
+                meshRef.current.userData.progress = THREE.MathUtils.lerp(
+                    meshRef.current.userData.progress || 0,
+                    isTree ? 1 : 0,
+                    delta * 1.5
+                );
+                const p = meshRef.current.userData.progress;
+
+                for(let i=0; i<count; i++) {
+                    const val = dataArray[i] || 0;
+                    const length = (0.5 + (val / 255.0) * 8.0) * 0.66;
+                    const angle = (i / count) * Math.PI * 2;
+                    const baseRadius = 6.0;
+                    const dist = baseRadius + length / 2;
+                    const treeX = dist * Math.cos(angle);
+                    const treeY = -4.5; 
+                    const treeZ = dist * Math.sin(angle);
+
+                    const posX = THREE.MathUtils.lerp(scatterTargets[i*3], treeX, p);
+                    const posY = THREE.MathUtils.lerp(scatterTargets[i*3+1], treeY, p);
+                    const posZ = THREE.MathUtils.lerp(scatterTargets[i*3+2], treeZ, p);
+
+                    dummy.position.set(posX, posY, posZ);
+
+                    if (p > 0.5) {
+                        dummy.lookAt(0, -4.5, 0); 
+                        dummy.scale.set(0.15, 0.1, length);
+                    } else {
+                        dummy.rotation.set(state.clock.elapsedTime * 0.2 + i, i, 0);
+                        const s = THREE.MathUtils.lerp(0.5, 0.15, p);
+                        dummy.scale.set(s, 0.1, s); 
+                    }
+                    dummy.updateMatrix();
+                    meshRef.current.setMatrixAt(i, dummy.matrix);
+                }
+                meshRef.current.instanceMatrix.needsUpdate = true;
+            });
+
+            return (
+                <instancedMesh ref={meshRef} args={[null, null, count]}>
+                    <boxGeometry args={[1, 1, 1]} />
+                    <meshStandardMaterial 
+                        toneMapped={false} 
+                        roughness={0.1}
+                        metalness={0.8}
+                        emissive="#111111" 
+                    />
+                </instancedMesh>
+            );
+        };
+
+        const Foliage = ({ isTree, count = 15000 }) => {
+            const meshRef = useRef();
+            const audioFreq = useAudioData();
+            
+            const uniforms = useMemo(() => ({
+                uTime: { value: 0 },
+                uProgress: { value: 0 },
+                uAudio: { value: 0 }
+            }), []);
+
+            const [attributes] = useState(() => {
+                const scatterPos = new Float32Array(count * 3);
+                const treePos = new Float32Array(count * 3);
+                const randoms = new Float32Array(count);
+                const treeHeight = 12;
+                const treeRadius = 4.5;
+
+                for (let i = 0; i < count; i++) {
+                    const i3 = i * 3;
+                    const r = 15 * Math.cbrt(Math.random());
+                    const theta = Math.random() * 2 * Math.PI;
+                    const phi = Math.acos(2 * Math.random() - 1);
+                    scatterPos[i3] = r * Math.sin(phi) * Math.cos(theta);
+                    scatterPos[i3+1] = r * Math.sin(phi) * Math.sin(theta);
+                    scatterPos[i3+2] = r * Math.cos(phi);
+
+                    const y = Math.random() * treeHeight; 
+                    const normalizedY = y / treeHeight; 
+                    const currentRadius = (1.0 - normalizedY) * treeRadius;
+                    const angle = i * 0.1; 
+                    const noise = (Math.random() - 0.5) * 0.5;
+                    
+                    treePos[i3] = (currentRadius + noise) * Math.cos(angle);
+                    treePos[i3+1] = y - 4; 
+                    treePos[i3+2] = (currentRadius + noise) * Math.sin(angle);
+                    randoms[i] = Math.random();
+                }
+                return { scatterPos, treePos, randoms };
+            });
+
+            useFrame((state, delta) => {
+                if (meshRef.current) {
+                    meshRef.current.material.uniforms.uTime.value += delta;
+                    const targetProgress = isTree ? 1.0 : 0.0;
+                    meshRef.current.material.uniforms.uProgress.value = THREE.MathUtils.lerp(
+                        meshRef.current.material.uniforms.uProgress.value,
+                        targetProgress,
+                        delta * 1.5
+                    );
+                    const normalizedAudio = Math.min(audioFreq.current / 128.0, 1.0); 
+                    meshRef.current.material.uniforms.uAudio.value = THREE.MathUtils.lerp(
+                        meshRef.current.material.uniforms.uAudio.value,
+                        normalizedAudio,
+                        0.2 
+                    );
+                    meshRef.current.rotation.y += 0.001;
+                }
+            });
+
+            return (
+                <points ref={meshRef}>
+                    <bufferGeometry>
+                        <bufferAttribute attach="attributes-position" count={count} array={attributes.scatterPos} itemSize={3} />
+                        <bufferAttribute attach="attributes-aScatterPos" count={count} array={attributes.scatterPos} itemSize={3} />
+                        <bufferAttribute attach="attributes-aTreePos" count={count} array={attributes.treePos} itemSize={3} />
+                        <bufferAttribute attach="attributes-aRandom" count={count} array={attributes.randoms} itemSize={1} />
+                    </bufferGeometry>
+                    <shaderMaterial
+                        vertexShader={foliageVertexShader}
+                        fragmentShader={foliageFragmentShader}
+                        uniforms={uniforms}
+                        transparent={true}
+                        depthWrite={false}
+                        blending={THREE.AdditiveBlending}
+                    />
+                </points>
+            );
+        };
+
+        const Ornaments = ({ isTree, count = 200, type = "sphere", color = "#D4AF37", scale = 0.3, textureStyle }) => {
+            const meshRef = useRef();
+            const audioFreq = useAudioData();
+            
+            // Texture for Gifts
+            const texture = useMemo(() => {
+                if (textureStyle === undefined) return null;
+                return createGiftTexture(textureStyle);
+            }, [textureStyle]);
+
+            const [data] = useState(() => {
+                const arr = [];
+                const treeHeight = 11;
+                const treeRadius = 4;
+                
+                for (let i = 0; i < count; i++) {
+                    const r = 12 * Math.cbrt(Math.random());
+                    const theta = Math.random() * 2 * Math.PI;
+                    const phi = Math.acos(2 * Math.random() - 1);
+                    const sx = r * Math.sin(phi) * Math.cos(theta);
+                    const sy = r * Math.sin(phi) * Math.sin(theta);
+                    const sz = r * Math.cos(phi);
+
+                    const y = Math.random() * treeHeight;
+                    const nY = y / treeHeight;
+                    const cR = (1.0 - nY) * treeRadius; 
+                    const ang = Math.random() * Math.PI * 2;
+                    
+                    const tx = cR * Math.cos(ang);
+                    const ty = y - 4;
+                    const tz = cR * Math.sin(ang);
+
+                    arr.push({ scatter: new THREE.Vector3(sx, sy, sz), tree: new THREE.Vector3(tx, ty, tz) });
+                }
+                return arr;
+            });
+
+            const dummy = useMemo(() => new THREE.Object3D(), []);
+
+            useFrame((state, delta) => {
+                if (!meshRef.current) return;
+
+                const t = state.clock.elapsedTime;
+                const target = isTree ? 1 : 0;
+                
+                meshRef.current.userData.progress = THREE.MathUtils.lerp(
+                    meshRef.current.userData.progress || 0,
+                    target,
+                    delta * 1.2
+                );
+                
+                const p = meshRef.current.userData.progress;
+                const audioScale = 1 + (audioFreq.current / 255) * 0.3;
+
+                data.forEach((item, i) => {
+                    const { scatter, tree } = item;
+                    dummy.position.lerpVectors(scatter, tree, p);
+                    
+                    dummy.position.y += Math.sin(t + i) * 0.02 * (1-p); 
+                    
+                    dummy.scale.setScalar(scale * (i % 2 === 0 ? audioScale : 1));
+                    
+                    dummy.rotation.x = t * 0.2 + i;
+                    dummy.rotation.z = t * 0.1 + i;
+                    
+                    dummy.updateMatrix();
+                    meshRef.current.setMatrixAt(i, dummy.matrix);
+                });
+                meshRef.current.instanceMatrix.needsUpdate = true;
+            });
+
+            const geometry = type === 'box' ? new THREE.BoxGeometry(1, 1, 1) : new THREE.SphereGeometry(1, 16, 16);
+
+            return (
+                <instancedMesh ref={meshRef} args={[geometry, null, count]}>
+                    <meshStandardMaterial 
+                        color={texture ? "white" : color} // White base if texture is present
+                        map={texture}
+                        roughness={texture ? 0.3 : 0.1} // Gifts are slightly less shiny than metal balls
+                        metalness={texture ? 0.5 : 0.9} 
+                        emissive={texture ? "#222" : color} // Subtle emissive for texture
+                        emissiveIntensity={0.2}
+                    />
+                </instancedMesh>
+            );
+        };
+
+        const StarTopper = ({ isTree }) => {
+            const ref = useRef();
+
+            const starGeometry = useMemo(() => {
+                const shape = new THREE.Shape();
+                const points = 5;
+                const outerRadius = 0.8;
+                const innerRadius = 0.4;
+                const angleOffset = Math.PI / 2; 
+
+                for (let i = 0; i < points * 2; i++) {
+                    const angle = (i * Math.PI) / points + angleOffset;
+                    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius;
+                    if (i === 0) shape.moveTo(x, y);
+                    else shape.lineTo(x, y);
+                }
+                shape.closePath();
+
+                const extrudeSettings = {
+                    depth: 0.2,
+                    bevelEnabled: true,
+                    bevelThickness: 0.1,
+                    bevelSize: 0.05,
+                    bevelSegments: 3
+                };
+
+                const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+                geometry.computeBoundingBox();
+                const zCenter = (geometry.boundingBox.max.z - geometry.boundingBox.min.z) / 2;
+                geometry.translate(0, 0, -zCenter); 
+                return geometry;
+            }, []);
+            
+            useFrame((state, delta) => {
+                if(ref.current) {
+                    const targetY = isTree ? 9 : 15; 
+                    const targetScale = isTree ? 1 : 0.1;
+                    ref.current.position.y = THREE.MathUtils.lerp(ref.current.position.y, targetY, delta * 2);
+                    ref.current.scale.setScalar(THREE.MathUtils.lerp(ref.current.scale.x, targetScale, delta * 2));
+                    ref.current.rotation.y += delta;
+                }
+            });
+
+            return (
+                <group ref={ref} position={[0, 15, 0]}>
+                    <mesh geometry={starGeometry}>
+                        <meshStandardMaterial color="#FFD700" emissive="#FFD700" emissiveIntensity={2} toneMapped={false} />
+                    </mesh>
+                    <pointLight color="#FFD700" intensity={5} distance={10} decay={2} />
+                </group>
+            );
+        };
+
+        const ResponsiveCamera = () => {
+            const { camera, size } = useThree();
+            useEffect(() => {
+                const isMobilePortrait = size.width < 768 && size.width < size.height;
+                const targetZ = isMobilePortrait ? 35 : 20; 
+                camera.position.z = targetZ;
+                camera.updateProjectionMatrix();
+            }, [size.width, size.height, camera]);
+            return null;
+        };
+
+        const Scene = ({ isTree }) => {
+            return (
+                <>
+                    <PerspectiveCamera makeDefault position={[0, 4, 20]} fov={50} />
+                    <ResponsiveCamera /> 
+                    <OrbitControls enablePan={false} minDistance={10} maxDistance={50} maxPolarAngle={Math.PI / 1.5} autoRotate={true} autoRotateSpeed={0.5} />
+                    <Environment preset="city" blur={1} background={false} />
+                    <ambientLight intensity={0.2} color="#002b16" />
+                    <spotLight position={[10, 20, 10]} angle={0.3} penumbra={1} intensity={2} castShadow color="#F7E7CE" />
+                    <spotLight position={[-10, 5, 10]} angle={0.5} penumbra={1} intensity={1} color="#023020" />
+                    
+                    <Foliage isTree={isTree} />
+                    <AudioSpectrumRing isTree={isTree} />
+
+                    {/* Heavy Ornaments - Textured Gifts Boxes */}
+                    <Ornaments isTree={isTree} count={15} type="box" scale={0.5} textureStyle={0} />
+                    <Ornaments isTree={isTree} count={15} type="box" scale={0.5} textureStyle={1} />
+                    <Ornaments isTree={isTree} count={15} type="box" scale={0.5} textureStyle={2} />
+                    <Ornaments isTree={isTree} count={15} type="box" scale={0.5} textureStyle={3} />
+                    
+                    {/* Light Ornaments (Balls) - Now Textured Spheres */}
+                    <Ornaments isTree={isTree} count={40} type="sphere" scale={0.3} textureStyle={0} />
+                    <Ornaments isTree={isTree} count={40} type="sphere" scale={0.3} textureStyle={1} />
+                    <Ornaments isTree={isTree} count={40} type="sphere" scale={0.3} textureStyle={2} />
+                    
+                    {/* Tiny Lights - Warm White */}
+                    <Ornaments isTree={isTree} count={300} type="sphere" color="#FFFDD0" scale={0.05} />
+
+                    <StarTopper isTree={isTree} />
+                    <Sparkles count={200} scale={12} size={2} speed={0.4} opacity={0.5} color="#F7E7CE" />
+                </>
+            );
+        };
+
+        const PostProcessingEffects = () => {
+            return (
+                <EffectComposer disableNormalPass>
+                    <Bloom luminanceThreshold={0.8} mipmapBlur intensity={1.2} radius={0.6} />
+                    <ToneMapping />
+                    <Vignette eskil={false} offset={0.1} darkness={1.1} />
+                    <Noise opacity={0.02} /> 
+                </EffectComposer>
+            );
+        };
+
+        const App = () => {
+            const [isTree, setIsTree] = useState(false);
+            const [audioReady, setAudioReady] = useState(false);
+
+            useEffect(() => {
+                const fileInput = document.getElementById('music-upload');
+                const resumeContext = () => { if (audioContext.state === 'suspended') audioContext.resume(); };
+
+                const startDefaultMusic = () => {
+                    if (!defaultMediaElementSource) {
+                        try {
+                            defaultMediaElementSource = audioContext.createMediaElementSource(defaultAudioEl);
+                            defaultMediaElementSource.connect(analyser);
+                            analyser.connect(audioContext.destination);
+                            activeSourceNode = defaultMediaElementSource;
+                        } catch(e) { console.log("Audio node error", e); }
+                    }
+                    
+                    defaultAudioEl.play().then(() => {
+                        setAudioReady(true);
+                        const btn = document.querySelector('#group-music button');
+                        if(btn) { btn.innerText = "Playing Default..."; btn.classList.add('active'); }
+                    }).catch(e => {
+                        const unlockAndPlay = () => {
+                            resumeContext();
+                            defaultAudioEl.play();
+                            setAudioReady(true);
+                            const btn = document.querySelector('#group-music button');
+                            if(btn) { btn.innerText = "Playing Default..."; btn.classList.add('active'); }
+                            document.removeEventListener('click', unlockAndPlay);
+                            document.removeEventListener('touchstart', unlockAndPlay);
+                        };
+                        document.addEventListener('click', unlockAndPlay);
+                        document.addEventListener('touchstart', unlockAndPlay);
+                    });
+                };
+
+                startDefaultMusic(); 
+
+                const handleFile = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        defaultAudioEl.pause();
+                        if (activeSourceNode && activeSourceNode.stop) try { activeSourceNode.stop(); } catch(e){}
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                            audioContext.decodeAudioData(ev.target.result, (buffer) => {
+                                const source = audioContext.createBufferSource();
+                                source.buffer = buffer;
+                                source.connect(analyser);
+                                source.loop = true;
+                                source.start(0);
+                                activeSourceNode = source;
+                                setAudioReady(true);
+                                document.querySelector('#group-music button').innerText = "Playing Custom...";
+                                document.querySelector('#group-music button').classList.add('active');
+                            });
+                        };
+                        reader.readAsArrayBuffer(file);
+                    }
+                };
+
+                fileInput.addEventListener('change', handleFile);
+
+                const editBtn = document.getElementById('edit-text-btn');
+                const modal = document.getElementById('text-modal');
+                const confirmBtn = document.getElementById('confirm-text-btn');
+
+                const openModal = () => {
+                    document.getElementById('input-title').value = document.getElementById('app-title').innerText;
+                    document.getElementById('input-subtitle').value = document.getElementById('app-subtitle').innerText;
+                    modal.classList.add('visible');
+                };
+                const closeModal = () => modal.classList.remove('visible');
+                const updateText = () => {
+                    const newTitle = document.getElementById('input-title').value;
+                    const newSubtitle = document.getElementById('input-subtitle').value;
+                    if(newTitle) document.getElementById('app-title').innerText = newTitle;
+                    if(newSubtitle) document.getElementById('app-subtitle').innerText = newSubtitle;
+                    closeModal();
+                };
+
+                editBtn.addEventListener('click', openModal);
+                confirmBtn.addEventListener('click', updateText);
+                const modalClick = (e) => { if (e.target === modal) closeModal(); };
+                modal.addEventListener('click', modalClick);
+
+                return () => {
+                    fileInput.removeEventListener('change', handleFile);
+                    editBtn.removeEventListener('click', openModal);
+                    confirmBtn.removeEventListener('click', updateText);
+                    modal.removeEventListener('click', modalClick);
+                };
+            }, []); 
+
+            useEffect(() => {
+                const toggleBtn = document.getElementById('toggle-state');
+                const header = document.getElementById('main-header');
+                const musicGroup = document.getElementById('group-music');
+                const editGroup = document.getElementById('group-edit');
+                const uiContainer = document.getElementById('ui');
+
+                if (isTree) {
+                    header.classList.add('ui-hidden');
+                    musicGroup.classList.add('ui-hidden');
+                    editGroup.classList.add('ui-hidden');
+                    uiContainer.classList.add('immersive-mode');
+                    toggleBtn.innerText = "Scatter Elements";
+                } else {
+                    header.classList.remove('ui-hidden');
+                    musicGroup.classList.remove('ui-hidden');
+                    editGroup.classList.remove('ui-hidden');
+                    uiContainer.classList.remove('immersive-mode');
+                    toggleBtn.innerText = "Assemble Tree";
+                }
+
+                const handleToggle = () => {
+                    setIsTree(prev => !prev);
+                    if (audioContext.state === 'suspended') audioContext.resume();
+                };
+
+                toggleBtn.onclick = handleToggle; 
+                return () => { toggleBtn.onclick = null; };
+            }, [isTree]);
+
+            return (
+                <Canvas shadows dpr={[1, 2]} gl={{ antialias: false, toneMappingExposure: 1.5 }}>
+                    <color attach="background" args={['#000500']} />
+                    <Suspense fallback={null}>
+                        <Scene isTree={isTree} />
+                        <PostProcessingEffects />
+                    </Suspense>
+                </Canvas>
+            );
+        };
+
+        const root = createRoot(document.getElementById('canvas-container'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
